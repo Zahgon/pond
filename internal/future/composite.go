@@ -2,7 +2,6 @@ package future
 
 import (
 	"context"
-	"fmt"
 	"sync"
 )
 
@@ -18,9 +17,7 @@ type compositeErrorResolution struct {
 	err   error
 }
 
-func (e *compositeErrorResolution) Error() string {
-	return e.err.Error()
-}
+func (e *compositeErrorResolution) Error() string { _ = "STUB: not implemented"; return "" }
 
 type waitListener struct {
 	count int
@@ -36,153 +33,61 @@ type CompositeFuture[V any] struct {
 }
 
 func NewCompositeFuture[V any](ctx context.Context) (*CompositeFuture[V], CompositeFutureResolver[V]) {
-	childCtx, cancel := context.WithCancelCause(ctx)
-
-	future := &CompositeFuture[V]{
-		ctx:         childCtx,
-		cancel:      cancel,
-		resolutions: make([]compositeResolution[V], 0),
-	}
-
-	return future, future.resolve
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
-func (f *CompositeFuture[V]) Done(count int) <-chan struct{} {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
+func (f *CompositeFuture[V]) Done(count int) <-chan struct{} { _ = "STUB: not implemented"; return nil }
 
-	ch := make(chan struct{})
+// Return immediately if the context is already canceled or the count is already reached
 
-	err := context.Cause(f.ctx)
-
-	// Return immediately if the context is already canceled or the count is already reached
-	if len(f.resolutions) >= count || err != nil {
-		close(ch)
-		return ch
-	}
-
-	// Register a listener
-	f.listeners = append(f.listeners, waitListener{
-		count: count,
-		ch:    ch,
-	})
-
-	return ch
-}
+// Register a listener
 
 func (f *CompositeFuture[V]) Context() context.Context {
-	return f.ctx
+	_ = "STUB: not implemented"
+	return *new(context.Context)
 }
 
-func (f *CompositeFuture[V]) Cancel(cause error) {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
+func (f *CompositeFuture[V]) Cancel(cause error) { _ = "STUB: not implemented"; return }
 
-	// Cancel the context
-	f.cancel(cause)
+// Cancel the context
 
-	// Notify listeners
-	f.notifyListeners()
-}
+// Notify listeners
 
 func (f *CompositeFuture[V]) Wait(count int) ([]V, error) {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-
-	result, err := f.getResult(count)
-	if result != nil || err != nil {
-		return result, err
-	}
-
-	// Register a listener
-	ch := make(chan struct{})
-	f.listeners = append(f.listeners, waitListener{
-		count: count,
-		ch:    ch,
-	})
-
-	f.mutex.Unlock()
-
-	// Wait for the listener to be notified or the context to be canceled
-	select {
-	case <-ch:
-	case <-f.ctx.Done():
-	}
-
-	f.mutex.Lock()
-
-	return f.getResult(count)
+	_ = "STUB: not implemented"
+	return nil, nil
 }
+
+// Register a listener
+
+// Wait for the listener to be notified or the context to be canceled
 
 func (f *CompositeFuture[V]) resolve(index int, value V, err error) {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-
-	if index < 0 {
-		panic(fmt.Errorf("index must be greater than or equal to 0"))
-	}
-
-	// Cancel the context if an error occurred
-	if err != nil {
-		f.cancel(&compositeErrorResolution{
-			index: index,
-			err:   err,
-		})
-	} else if context.Cause(f.ctx) == nil {
-		// Save the resolution
-		f.resolutions = append(f.resolutions, compositeResolution[V]{
-			index: index,
-			value: value,
-		})
-	}
-
-	// Notify listeners
-	f.notifyListeners()
-}
-
-func (f *CompositeFuture[V]) getResult(count int) (values []V, err error) {
-
-	cause := context.Cause(f.ctx)
-
-	// If we have enough results, return them
-	if cause != nil || len(f.resolutions) >= count {
-		// Get sorted resolution values
-		values = make([]V, count)
-		for _, resolution := range f.resolutions {
-			if resolution.index < count {
-				values[resolution.index] = resolution.value
-			}
-		}
-	}
-
-	if cause == nil {
-		return
-	}
-
-	if errorResolution, ok := cause.(*compositeErrorResolution); ok {
-		// Unwrap the error resolution
-		err = errorResolution.err
-	} else if len(f.resolutions) < count {
-		// If the context is canceled and we have collected enough results, return nil error
-		// because we assume that context cancellation happened after the last resolution.
-		err = cause
-	}
-
+	_ = "STUB: not implemented"
 	return
 }
 
-func (f *CompositeFuture[V]) notifyListeners() {
+// Cancel the context if an error occurred
 
-	err := context.Cause(f.ctx)
+// Save the resolution
 
-	// Notify listeners
-	for i := 0; i < len(f.listeners); i++ {
-		listener := f.listeners[i]
+// Notify listeners
 
-		if err != nil || listener.count <= len(f.resolutions) {
-			close(listener.ch)
-			f.listeners = append(f.listeners[:i], f.listeners[i+1:]...)
-			i--
-		}
-	}
+func (f *CompositeFuture[V]) getResult(count int) (values []V, err error) {
+	_ = "STUB: not implemented"
+	return nil, nil
+
+	// If we have enough results, return them
 }
+
+// Get sorted resolution values
+
+// Unwrap the error resolution
+
+// If the context is canceled and we have collected enough results, return nil error
+// because we assume that context cancellation happened after the last resolution.
+
+func (f *CompositeFuture[V]) notifyListeners() { _ = "STUB: not implemented"; return }
+
+// Notify listeners

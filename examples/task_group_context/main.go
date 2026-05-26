@@ -34,16 +34,6 @@ func main() {
 }
 
 func generateTasks(count int, duration time.Duration) []func() {
-
-	tasks := make([]func(), count)
-
-	for i := 0; i < count; i++ {
-		i := i
-		tasks[i] = func() {
-			time.Sleep(duration)
-			fmt.Printf("Task #%d finished\n", i)
-		}
-	}
-
-	return tasks
+	_ = "STUB: not implemented"
+	return nil
 }

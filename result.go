@@ -2,8 +2,6 @@ package pond
 
 import (
 	"context"
-
-	"github.com/alitto/pond/v2/internal/future"
 )
 
 // ResultPool is a pool that can be used to submit tasks that return a result.
@@ -48,66 +46,49 @@ type resultPool[R any] struct {
 	*pool
 }
 
-func (p *resultPool[R]) NewGroup() ResultTaskGroup[R] {
-	return newResultTaskGroup[R](p.pool, p.Context())
-}
+func (p *resultPool[R]) NewGroup() ResultTaskGroup[R] { _ = "STUB: not implemented"; return nil }
 
 func (p *resultPool[R]) NewGroupContext(ctx context.Context) ResultTaskGroup[R] {
-	return newResultTaskGroup[R](p.pool, ctx)
+	_ = "STUB: not implemented"
+	return nil
 }
 
-func (p *resultPool[R]) Submit(task func() R) ResultTask[R] {
-	future, _ := p.submit(task, p.nonBlocking)
-	return future
-}
+func (p *resultPool[R]) Submit(task func() R) ResultTask[R] { _ = "STUB: not implemented"; return nil }
 
 func (p *resultPool[R]) SubmitErr(task func() (R, error)) ResultTask[R] {
-	future, _ := p.submit(task, p.nonBlocking)
-	return future
+	_ = "STUB: not implemented"
+	return nil
 }
 
 func (p *resultPool[R]) TrySubmit(task func() R) (ResultTask[R], bool) {
-	return p.submit(task, true)
+	_ = "STUB: not implemented"
+	return nil, false
 }
 
 func (p *resultPool[R]) TrySubmitErr(task func() (R, error)) (ResultTask[R], bool) {
-	return p.submit(task, true)
+	_ = "STUB: not implemented"
+	return nil, false
 }
 
 func (p *resultPool[R]) submit(task any, nonBlocking bool) (ResultTask[R], bool) {
-	ctx := p.Context()
-	future, resolve := future.NewValueFuture[R](ctx)
-
-	if p.Stopped() {
-		var zero R
-		resolve(zero, ErrPoolStopped)
-		return future, false
-	}
-
-	wrapped := wrapTask[R, func(R, error)](task, resolve, ctx, p.pool.panicRecovery)
-
-	if err := p.pool.submit(wrapped, nonBlocking); err != nil {
-		var zero R
-		resolve(zero, err)
-		return future, false
-	}
-
-	return future, true
+	_ = "STUB: not implemented"
+	return nil, false
 }
 
 func (p *resultPool[R]) NewSubpool(maxConcurrency int, options ...Option) ResultPool[R] {
-	return newResultPool[R](maxConcurrency, p.pool, options...)
+	_ = "STUB: not implemented"
+	return nil
 }
 
 func newResultPool[R any](maxConcurrency int, parent *pool, options ...Option) *resultPool[R] {
-	return &resultPool[R]{
-		pool: newPool(maxConcurrency, parent, options...),
-	}
+	_ = "STUB: not implemented"
+	return nil
 }
 
 // NewResultPool creates a new result pool with the given maximum concurrency and options.
 // Result pools are generic pools that can be used to submit tasks that return a result.
 // The new maximum concurrency must be greater than or equal to 0 (0 means no limit).
 func NewResultPool[R any](maxConcurrency int, options ...Option) ResultPool[R] {
-	return newResultPool[R](maxConcurrency, nil, options...)
+	_ = "STUB: not implemented"
+	return nil
 }

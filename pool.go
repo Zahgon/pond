@@ -3,7 +3,6 @@ package pond
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -156,450 +155,173 @@ type pool struct {
 	canceledTaskCount   atomic.Uint64
 }
 
-func (p *pool) Context() context.Context {
-	return p.ctx
-}
+func (p *pool) Context() context.Context { _ = "STUB: not implemented"; return *new(context.Context) }
 
-func (p *pool) Stopped() bool {
-	return p.closed.Load() || p.ctx.Err() != nil
-}
+func (p *pool) Stopped() bool { _ = "STUB: not implemented"; return false }
 
-func (p *pool) MaxConcurrency() int {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
+func (p *pool) MaxConcurrency() int { _ = "STUB: not implemented"; return 0 }
 
-	return p.maxConcurrency
-}
+func (p *pool) Resize(maxConcurrency int) { _ = "STUB: not implemented"; return }
 
-func (p *pool) Resize(maxConcurrency int) {
-	if maxConcurrency == 0 {
-		maxConcurrency = math.MaxInt
-	}
+// Calculate the number of new workers to launch to reach the new max concurrency or the number of tasks in the queue, whichever is smaller
 
-	if maxConcurrency < 0 {
-		panic(errors.New("maxConcurrency must be greater than or equal to 0"))
-	}
+// Launch the new workers
 
-	p.mutex.Lock()
+func (p *pool) QueueSize() int { _ = "STUB: not implemented"; return 0 }
 
-	// Calculate the number of new workers to launch to reach the new max concurrency or the number of tasks in the queue, whichever is smaller
-	newWorkers := int(math.Min(float64(maxConcurrency-p.maxConcurrency), float64(p.tasks.Len())))
+func (p *pool) NonBlocking() bool { _ = "STUB: not implemented"; return false }
 
-	p.maxConcurrency = maxConcurrency
+func (p *pool) RunningWorkers() int64 { _ = "STUB: not implemented"; return 0 }
 
-	if newWorkers > 0 {
-		p.workerCount.Add(int64(newWorkers))
-		p.workerWaitGroup.Add(newWorkers)
-	}
+func (p *pool) SubmittedTasks() uint64 { _ = "STUB: not implemented"; return 0 }
 
-	p.mutex.Unlock()
+func (p *pool) WaitingTasks() uint64 { _ = "STUB: not implemented"; return 0 }
 
-	// Launch the new workers
-	for i := 0; i < newWorkers; i++ {
-		p.launchWorker(nil)
-	}
-}
+func (p *pool) FailedTasks() uint64 { _ = "STUB: not implemented"; return 0 }
 
-func (p *pool) QueueSize() int {
-	return p.queueSize
-}
+func (p *pool) SuccessfulTasks() uint64 { _ = "STUB: not implemented"; return 0 }
 
-func (p *pool) NonBlocking() bool {
-	return p.nonBlocking
-}
+func (p *pool) CompletedTasks() uint64 { _ = "STUB: not implemented"; return 0 }
 
-func (p *pool) RunningWorkers() int64 {
-	return p.workerCount.Load()
-}
+func (p *pool) DroppedTasks() uint64 { _ = "STUB: not implemented"; return 0 }
 
-func (p *pool) SubmittedTasks() uint64 {
-	return p.submittedTaskCount.Load()
-}
+func (p *pool) CanceledTasks() uint64 { _ = "STUB: not implemented"; return 0 }
 
-func (p *pool) WaitingTasks() uint64 {
-	return p.tasks.Len()
-}
+func (p *pool) worker(task any) { _ = "STUB: not implemented"; return }
 
-func (p *pool) FailedTasks() uint64 {
-	return p.failedTaskCount.Load()
-}
-
-func (p *pool) SuccessfulTasks() uint64 {
-	return p.successfulTaskCount.Load()
-}
-
-func (p *pool) CompletedTasks() uint64 {
-	return p.successfulTaskCount.Load() + p.failedTaskCount.Load()
-}
-
-func (p *pool) DroppedTasks() uint64 {
-	return p.droppedTaskCount.Load()
-}
-
-func (p *pool) CanceledTasks() uint64 {
-	return p.canceledTaskCount.Load()
-}
-
-func (p *pool) worker(task any) {
-	var readTaskErr, err error
-	exitedNormally := false
-	defer func() {
-		if !exitedNormally {
-			// In case of abnormal exit (e.g. runtime.Goexit() in the task),
-			// launch a new worker to execute the next task in the queue.
-			p.updateMetrics(fmt.Errorf("worker exited abnormally: %w", err))
-
-			task, err := p.readTask()
-			if err != nil {
-				return
-			}
-
-			if task != nil {
-				p.launchWorker(task)
-				p.notifySubmitWaiter()
-			}
-		}
-	}()
-	for {
-		if task != nil {
-			_, err = invokeTask[any](task, p.panicRecovery)
-
-			p.updateMetrics(err)
-		}
-
-		task, readTaskErr = p.readTask()
-
-		if readTaskErr != nil {
-			exitedNormally = true
-			return
-		}
-	}
-}
+// In case of abnormal exit (e.g. runtime.Goexit() in the task),
+// launch a new worker to execute the next task in the queue.
 
 func (p *pool) subpoolWorker(task any) func() (output any, err error) {
-	return func() (output any, err error) {
-		if task != nil {
-			output, err = invokeTask[any](task, p.panicRecovery)
-
-			p.updateMetrics(err)
-		}
-
-		// Attempt to submit the next task to the parent pool
-		if task, err := p.readTask(); err == nil {
-			for {
-				submitErr := p.parent.submit(p.subpoolWorker(task), p.nonBlocking)
-				if submitErr == nil {
-					break
-				}
-
-				// Wrap the error with the context canceled error to reflect that the task was canceled.
-				if errors.Is(submitErr, ErrPoolStopped) {
-					err = errors.Join(ErrContextCanceled, submitErr)
-					p.updateMetrics(err)
-					p.parent.updateMetrics(err)
-				}
-
-				// If the parent pool is stopped/canceled it won't accept submissions.
-				// Keep draining the subpool queue so workers can exit cleanly.
-				task, err = p.readTask()
-				if err != nil {
-					break
-				}
-			}
-		}
-
-		return
-	}
-}
-
-func (p *pool) Go(task func()) error {
-	return p.submit(task, p.nonBlocking)
-}
-
-func (p *pool) Submit(task func()) Task {
-	future, _ := p.wrapAndSubmit(task, p.nonBlocking)
-	return future
-}
-
-func (p *pool) SubmitErr(task func() error) Task {
-	future, _ := p.wrapAndSubmit(task, p.nonBlocking)
-	return future
-}
-
-func (p *pool) TrySubmit(task func()) (Task, bool) {
-	return p.wrapAndSubmit(task, true)
-}
-
-func (p *pool) TrySubmitErr(task func() error) (Task, bool) {
-	return p.wrapAndSubmit(task, true)
-}
-
-func (p *pool) wrapAndSubmit(task any, nonBlocking bool) (Task, bool) {
-	if p.Stopped() {
-		return poolStoppedFuture, false
-	}
-
-	future, wrappedTask, resolve := p.wrapTask(task)
-
-	if err := p.submit(wrappedTask, nonBlocking); err != nil {
-		resolve(err)
-		return future, false
-	}
-
-	return future, true
-}
-
-func (p *pool) wrapTask(task any) (Task, func() error, func(error)) {
-	ctx := p.Context()
-	future, resolve := future.NewFuture(ctx)
-
-	wrappedTask := wrapTask[struct{}, func(error)](task, resolve, ctx, p.panicRecovery)
-
-	return future, wrappedTask, resolve
-}
-
-func (p *pool) submit(task any, nonBlocking bool) (err error) {
-
-	p.submittedTaskCount.Add(1)
-
-	if nonBlocking {
-		err = p.trySubmit(task)
-	} else {
-		err = p.blockingTrySubmit(task)
-	}
-
-	if err != nil {
-		p.droppedTaskCount.Add(1)
-	}
-
-	return
-}
-
-func (p *pool) blockingTrySubmit(task any) error {
-	for {
-		if err := p.trySubmit(task); err != ErrQueueFull {
-			return err
-		}
-
-		// No space left in the queue, wait until a slot is released
-		select {
-		case <-p.ctx.Done():
-			return p.ctx.Err()
-		case <-p.submitWaiters:
-			select {
-			case <-p.ctx.Done():
-				return p.ctx.Err()
-			default:
-			}
-		}
-	}
-}
-
-func (p *pool) trySubmit(task any) error {
-	p.mutex.Lock()
-
-	// Check if the pool has been stopped while holding the lock
-	// to avoid race conditions on the workers wait group if the pool is being stopped.
-	if p.Stopped() {
-		p.mutex.Unlock()
-		return ErrPoolStopped
-	}
-
-	queueEnabled := p.queueSize > 0
-	tasksLen := int(p.tasks.Len())
-
-	// When queue is enabled, check if it is full
-	if queueEnabled && tasksLen >= p.queueSize {
-		p.mutex.Unlock()
-		return ErrQueueFull
-	}
-
-	if int(p.workerCount.Load()) >= p.maxConcurrency {
-		// When queue is disabled, return an error immediately if max concurrency is reached
-		if !queueEnabled {
-			p.mutex.Unlock()
-			return ErrQueueFull
-		}
-
-		// If queue is enabled, push the task at the back of the queue
-		p.tasks.Write(task)
-		p.mutex.Unlock()
-		return nil
-	}
-
-	p.workerCount.Add(1)
-	p.workerWaitGroup.Add(1)
-
-	if queueEnabled && tasksLen > 0 {
-		// Push the task at the back of the queue
-		p.tasks.Write(task)
-
-		// Pop the front task
-		task, _ = p.tasks.Read()
-	}
-
-	p.mutex.Unlock()
-
-	p.launchWorker(task)
-
-	// Notify a submit waiter there is room in the queue for a new task
-	p.notifySubmitWaiter()
-
+	_ = "STUB: not implemented"
 	return nil
 }
 
-func (p *pool) launchWorker(task any) {
-	if p.parent == nil {
-		// Launch a new worker to execute the task
-		go p.worker(task)
-	} else {
-		// Submit task to the parent pool wrapped in a function that will
-		// submit the next task to the parent pool when it completes (subpool worker)
-		p.parent.submit(p.subpoolWorker(task), p.nonBlocking)
-	}
+// Attempt to submit the next task to the parent pool
+
+// Wrap the error with the context canceled error to reflect that the task was canceled.
+
+// If the parent pool is stopped/canceled it won't accept submissions.
+// Keep draining the subpool queue so workers can exit cleanly.
+
+func (p *pool) Go(task func()) error { _ = "STUB: not implemented"; return nil }
+
+func (p *pool) Submit(task func()) Task { _ = "STUB: not implemented"; return *new(Task) }
+
+func (p *pool) SubmitErr(task func() error) Task { _ = "STUB: not implemented"; return *new(Task) }
+
+func (p *pool) TrySubmit(task func()) (Task, bool) {
+	_ = "STUB: not implemented"
+	return *new(Task), false
 }
 
-func (p *pool) readTask() (task any, err error) {
-	p.mutex.Lock()
+func (p *pool) TrySubmitErr(task func() error) (Task, bool) {
+	_ = "STUB: not implemented"
+	return *new(Task), false
+}
 
-	if p.tasks.Len() == 0 {
-		// No more tasks in the queue, worker will exit
-		p.workerCount.Add(-1)
-		p.workerWaitGroup.Done()
-		p.mutex.Unlock()
+func (p *pool) wrapAndSubmit(task any, nonBlocking bool) (Task, bool) {
+	_ = "STUB: not implemented"
+	return *new(Task), false
+}
 
-		// Notify a submit waiter there is room in the queue for a new task
-		p.notifySubmitWaiter()
+func (p *pool) wrapTask(task any) (Task, func() error, func(error)) {
+	_ = "STUB: not implemented"
+	return *new(Task), nil, nil
+}
 
-		err = ErrQueueEmpty
-		return
-	}
+func (p *pool) submit(task any, nonBlocking bool) (err error) {
+	_ = "STUB: not implemented"
+	return nil
+}
 
-	if p.maxConcurrency > 0 && int(p.workerCount.Load()) > p.maxConcurrency {
-		// Max concurrency reached, kill the worker
-		p.workerCount.Add(-1)
-		p.workerWaitGroup.Done()
-		p.mutex.Unlock()
+func (p *pool) blockingTrySubmit(task any) error { _ = "STUB: not implemented"; return nil }
 
-		err = ErrMaxConcurrencyReached
-		return
-	}
+// No space left in the queue, wait until a slot is released
 
-	task, _ = p.tasks.Read()
+func (p *pool) trySubmit(task any) error {
+	_ = "STUB: not implemented"
 
-	p.mutex.Unlock()
+	// Check if the pool has been stopped while holding the lock
+	// to avoid race conditions on the workers wait group if the pool is being stopped.
+	return nil
+}
 
-	// Notify a submit waiter there is room in the queue for a new task
-	p.notifySubmitWaiter()
+// When queue is enabled, check if it is full
 
+// When queue is disabled, return an error immediately if max concurrency is reached
+
+// If queue is enabled, push the task at the back of the queue
+
+// Push the task at the back of the queue
+
+// Pop the front task
+
+// Notify a submit waiter there is room in the queue for a new task
+
+func (p *pool) launchWorker(task any) { _ = "STUB: not implemented"; return }
+
+// Launch a new worker to execute the task
+
+// Submit task to the parent pool wrapped in a function that will
+// submit the next task to the parent pool when it completes (subpool worker)
+
+func (p *pool) readTask() (task any, err error) { _ = "STUB: not implemented"; return *new(any), nil }
+
+// No more tasks in the queue, worker will exit
+
+// Notify a submit waiter there is room in the queue for a new task
+
+// Max concurrency reached, kill the worker
+
+// Notify a submit waiter there is room in the queue for a new task
+
+func (p *pool) notifySubmitWaiter() {
+	_ = "STUB: not implemented"
+	// Wake up one of the waiters (if any)
 	return
 }
 
-func (p *pool) notifySubmitWaiter() {
-	// Wake up one of the waiters (if any)
-	select {
-	case p.submitWaiters <- struct{}{}:
-	default:
-		return
-	}
-}
-
-func (p *pool) updateMetrics(err error) {
-	if err != nil {
-		if errors.Is(err, ErrContextCanceled) {
-			p.canceledTaskCount.Add(1)
-		} else {
-			p.failedTaskCount.Add(1)
-		}
-	} else {
-		p.successfulTaskCount.Add(1)
-	}
-}
+func (p *pool) updateMetrics(err error) { _ = "STUB: not implemented"; return }
 
 func (p *pool) Stop() Task {
-	return Submit(func() {
-		// Stop accepting new tasks while holding the lock to avoid race conditions.
-		p.mutex.Lock()
-		p.closed.Store(true)
-		p.mutex.Unlock()
+	_ = "STUB: not implemented"
+	return *
 
-		// Wait for all workers to finish executing all tasks (including the ones in the queue)
-		p.workerWaitGroup.Wait()
-
-		// Cancel the context with a pool stopped error to signal that the pool has been stopped
-		p.cancel(ErrPoolStopped)
-	})
+	// Stop accepting new tasks while holding the lock to avoid race conditions.
+	new(Task)
 }
 
-func (p *pool) StopAndWait() {
-	p.Stop().Wait()
-}
+// Wait for all workers to finish executing all tasks (including the ones in the queue)
+
+// Cancel the context with a pool stopped error to signal that the pool has been stopped
+
+func (p *pool) StopAndWait() { _ = "STUB: not implemented"; return }
 
 func (p *pool) NewSubpool(maxConcurrency int, options ...Option) Pool {
-	return newPool(maxConcurrency, p, options...)
+	_ = "STUB: not implemented"
+	return *new(Pool)
 }
 
-func (p *pool) NewGroup() TaskGroup {
-	return newTaskGroup(p, p.ctx)
-}
+func (p *pool) NewGroup() TaskGroup { _ = "STUB: not implemented"; return *new(TaskGroup) }
 
 func (p *pool) NewGroupContext(ctx context.Context) TaskGroup {
-	return newTaskGroup(p, ctx)
+	_ = "STUB: not implemented"
+	return *new(TaskGroup)
 }
 
 func newPool(maxConcurrency int, parent *pool, options ...Option) *pool {
-
-	if parent != nil {
-		if maxConcurrency > parent.MaxConcurrency() {
-			panic(fmt.Errorf("maxConcurrency cannot be greater than the parent pool's maxConcurrency (%d)", parent.MaxConcurrency()))
-		}
-
-		if maxConcurrency == 0 {
-			maxConcurrency = parent.MaxConcurrency()
-		}
-	}
-
-	if maxConcurrency == 0 {
-		maxConcurrency = math.MaxInt
-	}
-
-	if maxConcurrency < 0 {
-		panic(errors.New("maxConcurrency must be greater than or equal to 0"))
-	}
-
-	pool := &pool{
-		ctx:            context.Background(),
-		nonBlocking:    DefaultNonBlocking,
-		panicRecovery:  true,
-		maxConcurrency: maxConcurrency,
-		queueSize:      DefaultQueueSize,
-		// Buffer size of 1 to prevent deadlock when read on the submitWaiters channel happens
-		// after the write on the same channel in the notifySubmitWaiter method.
-		// See https://github.com/alitto/pond/issues/108
-		submitWaiters: make(chan struct{}, 1),
-	}
-
-	if parent != nil {
-		pool.parent = parent
-		pool.ctx = parent.Context()
-		pool.queueSize = parent.queueSize
-		pool.nonBlocking = parent.nonBlocking
-		pool.panicRecovery = parent.panicRecovery
-	}
-
-	for _, option := range options {
-		option(pool)
-	}
-
-	pool.ctx, pool.cancel = context.WithCancelCause(pool.ctx)
-
-	pool.tasks = linkedbuffer.NewLinkedBuffer[any](LinkedBufferInitialSize, LinkedBufferMaxCapacity)
-
-	return pool
+	_ = "STUB: not implemented"
+	return nil
 }
+
+// Buffer size of 1 to prevent deadlock when read on the submitWaiters channel happens
+// after the write on the same channel in the notifySubmitWaiter method.
+// See https://github.com/alitto/pond/issues/108
 
 // NewPool creates a new pool with the given maximum concurrency and options.
 // The new maximum concurrency must be greater than or equal to 0 (0 means no limit).
 func NewPool(maxConcurrency int, options ...Option) Pool {
-	return newPool(maxConcurrency, nil, options...)
+	_ = "STUB: not implemented"
+	return *new(Pool)
 }

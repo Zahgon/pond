@@ -3,35 +3,19 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
-	"net/http"
 
 	"github.com/alitto/pond/v2"
 )
 
 func fetchURL(ctx context.Context, url string) (string, error) {
+	_ = "STUB: not implemented"
 	// Create a new HTTP request with the provided URL and context
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-
-	if err != nil {
-		return "", err
-	}
-
-	// Send the HTTP request
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-
-	// Get response body as a string
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return "", err
-	}
-
-	return string(body), nil
+	return "", nil
 }
+
+// Send the HTTP request
+
+// Get response body as a string
 
 var urls = []string{
 	"https://jsonplaceholder.typicode.com/todos/1",

@@ -2,7 +2,6 @@ package future
 
 import (
 	"context"
-	"fmt"
 )
 
 type ValueFutureResolver[V any] func(value V, err error)
@@ -14,39 +13,16 @@ type ValueFuture[V any] struct {
 	ctx context.Context
 }
 
-func (f *ValueFuture[V]) Done() <-chan struct{} {
-	return f.ctx.Done()
-}
+func (f *ValueFuture[V]) Done() <-chan struct{} { _ = "STUB: not implemented"; return nil }
 
-func (f *ValueFuture[V]) Result() (V, error) {
-	<-f.ctx.Done()
-
-	cause := context.Cause(f.ctx)
-	if cause != nil {
-		if resolution, ok := cause.(*valueFutureResolution[V]); ok {
-			return resolution.value, resolution.err
-		}
-	}
-	var zero V
-	return zero, cause
-}
+func (f *ValueFuture[V]) Result() (V, error) { _ = "STUB: not implemented"; return *new(V), nil }
 
 // Get waits for the future to complete and returns the output and any error that occurred.
-func (f *ValueFuture[V]) Wait() (V, error) {
-	return f.Result()
-}
+func (f *ValueFuture[V]) Wait() (V, error) { _ = "STUB: not implemented"; return *new(V), nil }
 
 func NewValueFuture[V any](ctx context.Context) (*ValueFuture[V], ValueFutureResolver[V]) {
-	childCtx, cancel := context.WithCancelCause(ctx)
-	future := &ValueFuture[V]{
-		ctx: childCtx,
-	}
-	return future, func(value V, err error) {
-		cancel(&valueFutureResolution[V]{
-			value: value,
-			err:   err,
-		})
-	}
+	_ = "STUB: not implemented"
+	return nil, nil
 }
 
 type valueFutureResolution[V any] struct {
@@ -54,9 +30,4 @@ type valueFutureResolution[V any] struct {
 	err   error
 }
 
-func (v *valueFutureResolution[V]) Error() string {
-	if v.err != nil {
-		return v.err.Error()
-	}
-	return fmt.Sprintf("future resolved: %#v", v.value)
-}
+func (v *valueFutureResolution[V]) Error() string { _ = "STUB: not implemented"; return "" }

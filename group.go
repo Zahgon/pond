@@ -80,148 +80,77 @@ type abstractTaskGroup[T func() | func() O, E func() error | func() (O, error), 
 	futureResolver future.CompositeFutureResolver[*result[O]]
 }
 
-func (g *abstractTaskGroup[T, E, O]) Done() <-chan struct{} {
-	return g.future.Done(int(g.nextIndex.Load()))
-}
+func (g *abstractTaskGroup[T, E, O]) Done() <-chan struct{} { _ = "STUB: not implemented"; return nil }
 
-func (g *abstractTaskGroup[T, E, O]) Stop() {
-	g.future.Cancel(ErrGroupStopped)
-}
+func (g *abstractTaskGroup[T, E, O]) Stop() { _ = "STUB: not implemented"; return }
 
 func (g *abstractTaskGroup[T, E, O]) Context() context.Context {
-	return g.future.Context()
+	_ = "STUB: not implemented"
+	return *new(context.Context)
 }
 
 func (g *abstractTaskGroup[T, E, O]) Submit(tasks ...T) *abstractTaskGroup[T, E, O] {
-	for _, task := range tasks {
-		g.submit(task)
-	}
-
-	return g
+	_ = "STUB: not implemented"
+	return nil
 }
 
 func (g *abstractTaskGroup[T, E, O]) SubmitErr(tasks ...E) *abstractTaskGroup[T, E, O] {
-	for _, task := range tasks {
-		g.submit(task)
-	}
-
-	return g
+	_ = "STUB: not implemented"
+	return nil
 }
 
-func (g *abstractTaskGroup[T, E, O]) submit(task any) {
-	index := int(g.nextIndex.Add(1) - 1)
+func (g *abstractTaskGroup[T, E, O]) submit(task any) { _ = "STUB: not implemented"; return }
 
-	g.taskWaitGroup.Add(1)
+// Check if the context has been cancelled to prevent running tasks that are not needed
 
-	err := g.pool.submit(func() error {
-		defer g.taskWaitGroup.Done()
+// Wrap the error with the context canceled error to reflect that the task was canceled.
 
-		// Check if the context has been cancelled to prevent running tasks that are not needed
-		if err := g.future.Context().Err(); err != nil {
-			// Wrap the error with the context canceled error to reflect that the task was canceled.
-			err = errors.Join(ErrContextCanceled, err)
-
-			g.futureResolver(index, &result[O]{
-				Err: err,
-			}, err)
-
-			return err
-		}
-
-		// Invoke the task
-		output, err := invokeTask[O](task, g.pool.panicRecovery)
-
-		g.futureResolver(index, &result[O]{
-			Output: output,
-			Err:    err,
-		}, err)
-
-		return err
-	}, g.pool.nonBlocking)
-
-	if err != nil {
-		g.taskWaitGroup.Done()
-
-		g.futureResolver(index, &result[O]{
-			Err: err,
-		}, err)
-	}
-}
+// Invoke the task
 
 type taskGroup struct {
 	abstractTaskGroup[func(), func() error, struct{}]
 }
 
 func (g *taskGroup) Submit(tasks ...func()) TaskGroup {
-	g.abstractTaskGroup.Submit(tasks...)
-	return g
+	_ = "STUB: not implemented"
+	return *new(TaskGroup)
 }
 
 func (g *taskGroup) SubmitErr(tasks ...func() error) TaskGroup {
-	g.abstractTaskGroup.SubmitErr(tasks...)
-	return g
+	_ = "STUB: not implemented"
+	return *new(TaskGroup)
 }
 
-func (g *taskGroup) Wait() error {
-	_, err := g.future.Wait(int(g.nextIndex.Load()))
-	// This wait group could reach zero before the future is resolved if called in between tasks being submitted and the future being resolved.
-	// That's why we wait for the future to be resolved before waiting for the wait group.
-	g.taskWaitGroup.Wait()
-	return err
-}
+func (g *taskGroup) Wait() error { _ = "STUB: not implemented"; return nil }
+
+// This wait group could reach zero before the future is resolved if called in between tasks being submitted and the future being resolved.
+// That's why we wait for the future to be resolved before waiting for the wait group.
 
 type resultTaskGroup[O any] struct {
 	abstractTaskGroup[func() O, func() (O, error), O]
 }
 
 func (g *resultTaskGroup[O]) Submit(tasks ...func() O) ResultTaskGroup[O] {
-	g.abstractTaskGroup.Submit(tasks...)
-	return g
+	_ = "STUB: not implemented"
+	return nil
 }
 
 func (g *resultTaskGroup[O]) SubmitErr(tasks ...func() (O, error)) ResultTaskGroup[O] {
-	g.abstractTaskGroup.SubmitErr(tasks...)
-	return g
+	_ = "STUB: not implemented"
+	return nil
 }
 
-func (g *resultTaskGroup[O]) Wait() ([]O, error) {
-	results, err := g.future.Wait(int(g.nextIndex.Load()))
+func (g *resultTaskGroup[O]) Wait() ([]O, error) { _ = "STUB: not implemented"; return nil, nil }
 
-	// This wait group could reach zero before the future is resolved if called in between tasks being submitted and the future being resolved.
-	// That's why we wait for the future to be resolved before waiting for the wait group.
-	g.taskWaitGroup.Wait()
-
-	values := make([]O, len(results))
-
-	for i, result := range results {
-		if result != nil {
-			values[i] = result.Output
-		}
-	}
-
-	return values, err
-}
+// This wait group could reach zero before the future is resolved if called in between tasks being submitted and the future being resolved.
+// That's why we wait for the future to be resolved before waiting for the wait group.
 
 func newTaskGroup(pool *pool, ctx context.Context) TaskGroup {
-	future, futureResolver := future.NewCompositeFuture[*result[struct{}]](ctx)
-
-	return &taskGroup{
-		abstractTaskGroup: abstractTaskGroup[func(), func() error, struct{}]{
-			pool:           pool,
-			future:         future,
-			futureResolver: futureResolver,
-		},
-	}
+	_ = "STUB: not implemented"
+	return *new(TaskGroup)
 }
 
 func newResultTaskGroup[O any](pool *pool, ctx context.Context) ResultTaskGroup[O] {
-	future, futureResolver := future.NewCompositeFuture[*result[O]](ctx)
-
-	return &resultTaskGroup[O]{
-		abstractTaskGroup: abstractTaskGroup[func() O, func() (O, error), O]{
-			pool:           pool,
-			future:         future,
-			futureResolver: futureResolver,
-		},
-	}
+	_ = "STUB: not implemented"
+	return nil
 }

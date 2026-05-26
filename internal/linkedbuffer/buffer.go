@@ -17,52 +17,31 @@ type buffer[T any] struct {
 	zero           T
 }
 
-func newBuffer[T any](capacity int) *buffer[T] {
-	return &buffer[T]{
-		data: make([]T, capacity),
-	}
-}
+func newBuffer[T any](capacity int) *buffer[T] { _ = "STUB: not implemented"; return nil }
 
 // Cap returns the capacity of the buffer.
 func (b *buffer[T]) Cap() int {
-	return cap(b.data)
+	_ = "STUB: not implemented"
+
+	// Len returns the number of elements in the buffer.
+	return 0
 }
 
-// Len returns the number of elements in the buffer.
-func (b *buffer[T]) Len() int {
-	return b.nextWriteIndex - b.nextReadIndex
-}
+func (b *buffer[T]) Len() int { _ = "STUB: not implemented"; return 0 }
 
 // Write writes a value to the buffer.
 // If the buffer is full, it returns an EOF error.
-func (b *buffer[T]) Write(value T) error {
-	if b.nextWriteIndex >= b.Cap() {
-		// Buffer is full
-		return ErrEOF
-	}
+func (b *buffer[T]) Write(value T) error { _ = "STUB: not implemented"; return nil }
 
-	b.data[b.nextWriteIndex] = value
-	b.nextWriteIndex++
-	return nil
-}
+// Buffer is full
 
 // Read reads a value from the buffer.
 // If the buffer is empty, it returns an EOF error.
 // If the buffer has been read completely, it returns an EOF error.
-func (b *buffer[T]) Read() (value T, err error) {
-	if b.nextReadIndex >= b.Cap() || (b.next == nil && b.nextReadIndex >= b.nextWriteIndex) {
-		// Buffer read completely, return EOF error
-		err = ErrEOF
-		return
-	}
+func (b *buffer[T]) Read() (value T, err error) { _ = "STUB: not implemented"; return *new(T), nil }
 
-	value = b.data[b.nextReadIndex]
+// Buffer read completely, return EOF error
 
-	// Remove reference to read value to prevent memory leaks caused by
-	// holding references to submitted tasks.
-	// See https://github.com/alitto/pond/issues/110
-	b.data[b.nextReadIndex] = b.zero
-
-	b.nextReadIndex++
-	return
-}
+// Remove reference to read value to prevent memory leaks caused by
+// holding references to submitted tasks.
+// See https://github.com/alitto/pond/issues/110

@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/alitto/pond/v2"
 	"github.com/prometheus/client_golang/prometheus"
@@ -80,13 +78,8 @@ func main() {
 }
 
 func submitTasks(pool pond.Pool) {
+	_ = "STUB: not implemented"
 
 	// Submit 1000 tasks
-	for i := 0; i < 1000; i++ {
-		i := i
-		pool.Submit(func() {
-			fmt.Printf("Running task #%d\n", i)
-			time.Sleep(500 * time.Millisecond)
-		})
-	}
+	return
 }

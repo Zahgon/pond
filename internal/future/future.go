@@ -13,46 +13,20 @@ type Future struct {
 	ctx context.Context
 }
 
-func (f *Future) Done() <-chan struct{} {
-	return f.ctx.Done()
-}
+func (f *Future) Done() <-chan struct{} { _ = "STUB: not implemented"; return nil }
 
-func (f *Future) Err() error {
-	<-f.ctx.Done()
-
-	cause := context.Cause(f.ctx)
-	if cause != nil {
-		if resolution, ok := cause.(*futureResolution); ok {
-			return resolution.err
-		}
-	}
-	return cause
-}
+func (f *Future) Err() error { _ = "STUB: not implemented"; return nil }
 
 // Wait waits for the future to complete and returns any error that occurred.
-func (f *Future) Wait() error {
-	return f.Err()
-}
+func (f *Future) Wait() error { _ = "STUB: not implemented"; return nil }
 
 func NewFuture(ctx context.Context) (*Future, FutureResolver) {
-	childCtx, cancel := context.WithCancelCause(ctx)
-	future := &Future{
-		ctx: childCtx,
-	}
-	return future, func(err error) {
-		cancel(&futureResolution{
-			err: err,
-		})
-	}
+	_ = "STUB: not implemented"
+	return nil, *new(FutureResolver)
 }
 
 type futureResolution struct {
 	err error
 }
 
-func (v *futureResolution) Error() string {
-	if v.err != nil {
-		return v.err.Error()
-	}
-	return "future resolved"
-}
+func (v *futureResolution) Error() string { _ = "STUB: not implemented"; return "" }
